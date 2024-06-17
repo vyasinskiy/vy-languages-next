@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model languages {
+  short_name   String         @id @db.VarChar(2)
+  name         String?        @unique @db.VarChar(20)
+  translations translations[]
+}
+
+model progress {
+  progress_id      Int           @id @default(autoincrement())
+  user_id          Int?
+  translation_name String?       @db.VarChar(50)
+  is_answered      Boolean?
+  is_favorite      Boolean?
+  translations     translations? @relation(fields: [translation_name], references: [name], onDelete: NoAction, onUpdate: NoAction)
+  users            users?        @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model translations {
+  name                                                  String         @id @db.VarChar(50)
+  example                                               String?        @db.VarChar(300)
+  lang                                                  String?        @db.VarChar(2)
+  en_name                                               String?        @db.VarChar(50)
+  ru_name                                               String?        @db.VarChar(50)
+  es_name                                               String?        @db.VarChar(50)
+  progress                                              progress[]
+  translations_translations_en_nameTotranslations       translations?  @relation("translations_en_nameTotranslations", fields: [en_name], references: [name], onDelete: NoAction, onUpdate: NoAction)
+  other_translations_translations_en_nameTotranslations translations[] @relation("translations_en_nameTotranslations")
+  translations_translations_es_nameTotranslations       translations?  @relation("translations_es_nameTotranslations", fields: [es_name], references: [name], onDelete: NoAction, onUpdate: NoAction)
+  other_translations_translations_es_nameTotranslations translations[] @relation("translations_es_nameTotranslations")
+  languages                                             languages?     @relation(fields: [lang], references: [short_name], onDelete: NoAction, onUpdate: NoAction)
+  translations_translations_ru_nameTotranslations       translations?  @relation("translations_ru_nameTotranslations", fields: [ru_name], references: [name], onDelete: NoAction, onUpdate: NoAction)
+  other_translations_translations_ru_nameTotranslations translations[] @relation("translations_ru_nameTotranslations")
+}
+
+model users {
+  user_id  Int        @id @default(autoincrement())
+  login    String?    @unique @db.VarChar(30)
+  password String?    @db.VarChar(60)
+  name     String?    @db.VarChar(30)
+  progress progress[]
+}
