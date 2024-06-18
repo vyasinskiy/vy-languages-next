@@ -13,14 +13,14 @@ export const metadata: Metadata = {
 export default function RootLayout(props: ComponentProps) {
   return (
     <html lang="en">
-      <body>
+      <body style={{height: '100vh', overflow: 'hidden'}}>
         <AppRouterCacheProvider>
           <ThemeProvider theme={theme}>
-            <main>
+            <main style={{ height: '100%' }}>
               {props.children}
             </main>
           </ThemeProvider>
-+       </AppRouterCacheProvider>
+        </AppRouterCacheProvider>
       </body>
     </html>
   );

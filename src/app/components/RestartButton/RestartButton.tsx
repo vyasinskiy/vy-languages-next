@@ -16,6 +16,9 @@ export const RestartButton = (props: ComponentProps) => {
     const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
         setIsOpen(true);
     };
+    const handleAction = (isAgree: boolean) => {
+        setIsOpen(false);
+    }
 	return (
         <>
             <IconButton
@@ -48,8 +51,8 @@ export const RestartButton = (props: ComponentProps) => {
                             This will clear your progress.
                         </Box>
                         <Box display="flex" gap="10px" mt="10px">
-                            <Button variant="outlined">Yes</Button>
-                            <Button variant="outlined">No</Button>
+                            <Button variant="outlined" onClick={() => handleAction(true)}>Yes</Button>
+                            <Button variant="outlined" onClick={() => handleAction(false)}>No</Button>
                         </Box>
                     </Box>
             </Popover>

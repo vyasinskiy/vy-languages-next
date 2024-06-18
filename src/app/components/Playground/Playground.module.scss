@@ -1,0 +1,61 @@
+@import 'src/assets/scss/pallete.scss';
+
+.wrapper {
+	margin: 100px auto 0;
+	max-width: 400px;
+	text-align: center;
+
+	& .verticalOffset {
+		margin-bottom: 10px;
+	}
+}
+
+.form {
+	margin-bottom: 20px;
+}
+
+.title {
+	display: inline-block;
+	position: relative;
+
+	&:hover {
+		cursor: default;
+	}
+
+	.favoriteIcon {
+		position: absolute;
+		top: 0;
+		right: -24px;
+		cursor: pointer;
+
+		&.active {
+			color: $color-active;
+		}
+	}
+}
+
+.helpButtons {
+	display: flex;
+	justify-content: space-between;
+	gap: 10px;
+}
+
+.synonyms,
+.help {
+	display: block;
+	margin-top: 30px;
+	font-size: 20px;
+}
+
+.exampleText {
+	font-size: 16px;
+}
+
+.help {
+	cursor: default;
+	font-weight: bold;
+}
+
+.error {
+	color: $color-danger;
+}
