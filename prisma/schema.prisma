@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -8,36 +9,31 @@ datasource db {
 }
 
 model languages {
-  short_name   String         @id @db.VarChar(2)
-  name         String?        @unique @db.VarChar(20)
-  translations translations[]
+  language_id Int     @id @default(autoincrement())
+  short_name  String? @db.VarChar(2)
+  name        String? @unique @db.VarChar(20)
+  words       words[]
 }
 
 model progress {
-  progress_id      Int           @id @default(autoincrement())
-  user_id          Int?
-  translation_name String?       @db.VarChar(50)
-  is_answered      Boolean?
-  is_favorite      Boolean?
-  translations     translations? @relation(fields: [translation_name], references: [name], onDelete: NoAction, onUpdate: NoAction)
-  users            users?        @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  progress_id    Int          @id @default(autoincrement())
+  user_id        Int
+  translation_id Int
+  is_answered    Boolean      @default(false)
+  is_favorite    Boolean      @default(false)
+  translations   translations @relation(fields: [translation_id], references: [translation_id], onDelete: NoAction, onUpdate: NoAction)
+  users          users        @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model translations {
-  name                                                  String         @id @db.VarChar(50)
-  example                                               String?        @db.VarChar(300)
-  lang                                                  String?        @db.VarChar(2)
-  en_name                                               String?        @db.VarChar(50)
-  ru_name                                               String?        @db.VarChar(50)
-  es_name                                               String?        @db.VarChar(50)
-  progress                                              progress[]
-  translations_translations_en_nameTotranslations       translations?  @relation("translations_en_nameTotranslations", fields: [en_name], references: [name], onDelete: NoAction, onUpdate: NoAction)
-  other_translations_translations_en_nameTotranslations translations[] @relation("translations_en_nameTotranslations")
-  translations_translations_es_nameTotranslations       translations?  @relation("translations_es_nameTotranslations", fields: [es_name], references: [name], onDelete: NoAction, onUpdate: NoAction)
-  other_translations_translations_es_nameTotranslations translations[] @relation("translations_es_nameTotranslations")
-  languages                                             languages?     @relation(fields: [lang], references: [short_name], onDelete: NoAction, onUpdate: NoAction)
-  translations_translations_ru_nameTotranslations       translations?  @relation("translations_ru_nameTotranslations", fields: [ru_name], references: [name], onDelete: NoAction, onUpdate: NoAction)
-  other_translations_translations_ru_nameTotranslations translations[] @relation("translations_ru_nameTotranslations")
+  translation_id                         Int        @id @default(autoincrement())
+  word_id_from                           Int
+  word_id_to                             Int
+  progress                               progress[]
+  words_translations_word_id_fromTowords words      @relation("translations_word_id_fromTowords", fields: [word_id_from], references: [word_id], onDelete: NoAction, onUpdate: NoAction)
+  words_translations_word_id_toTowords   words      @relation("translations_word_id_toTowords", fields: [word_id_to], references: [word_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([word_id_from, word_id_to], map: "unique_translation")
 }
 
 model users {
@@ -46,4 +42,14 @@ model users {
   password String?    @db.VarChar(60)
   name     String?    @db.VarChar(30)
   progress progress[]
+}
+
+model words {
+  word_id                                       Int            @id @default(autoincrement())
+  word                                          String         @db.VarChar(50)
+  language_id                                   Int
+  word_example                                  String?        @db.VarChar(100)
+  translations_translations_word_id_fromTowords translations[] @relation("translations_word_id_fromTowords")
+  translations_translations_word_id_toTowords   translations[] @relation("translations_word_id_toTowords")
+  languages                                     languages      @relation(fields: [language_id], references: [language_id], onDelete: NoAction, onUpdate: NoAction)
 }

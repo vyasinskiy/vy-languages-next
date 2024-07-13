@@ -1,5 +1,5 @@
 'use client';
-import React, { SyntheticEvent, useEffect, useRef } from 'react';
+import React, { SyntheticEvent, useEffect, useMemo, useRef } from 'react';
 import { useState, ChangeEvent } from 'react';
 import {
 	Button,
@@ -9,19 +9,26 @@ import {
 	TextField,
 	Tooltip,
 } from '@mui/material';
-import { clsx } from 'clsx';
 import Box from '@mui/material/Box';
-// import cn from 'classnames';
 
 // import { useWord } from '../../hooks/useWord';
 
 //import { ReactComponent as FavoriteIcon } from '../../assets/icons/favorite.svg';
-// import styles from './Playground.module.scss';
 import { SnackBar } from '../SnackBar';
-import { AdvancedGame } from '../AdvancedGame';
-import { GameMode } from '@lib/types';
+// import { AdvancedGame } from '../AdvancedGame';
+import { ComponentProps } from '@lib/types';
+import { UpdateWordRequestBody } from '@/app/api/playground/route';
+import { PlaygroundItem } from '@/app/lib/types/playground';
+import { useWords } from '@/app/lib/hooks/playground';
 
-export function Playground() {
+interface PlaygroundProps extends ComponentProps {
+	items: PlaygroundItem[];
+	langFrom: string;
+	langTo: string;
+}
+
+export function Playground(props: PlaygroundProps) {
+	// const [translations, setTranslations] = useState(props.translations ?? []);
 	// const dispatch = useAppDispatch();
 
 	// const mode = useSelector((state: RootState) => state.mode);
@@ -29,22 +36,18 @@ export function Playground() {
 	const [value, setValue] = useState<string>('');
 	const [error, setError] = useState<string>('');
 	const [showHelp, setShowHelp] = useState<boolean>(false);
-	const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
+	// const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
 	const [synonymsSelected, setSynonymsSelected] = useState<string[]>([]);
 
-	// const { currentWord, updateWord, checkWord } = useWord();
-
-	// const { engKey, rusKey, engContext, rusContext, isFavorite, isLast } =
-	// 	currentWord;
-	const engKey = '', rusKey = '', engContext = '', rusContext = '', isFavorite = true, isLast = true;
+	const { currentItem, updateItem, checkItem } = useWords(props.items, props.langFrom, props.langTo);
 
 	const advancedInputRef = useRef<HTMLInputElement>();
 
-	useEffect(() => {
-		if (advancedInputRef.current) {
-			advancedInputRef.current.focus();
-		}
-	}, [showAdvanced]);
+	// useEffect(() => {
+	// 	if (advancedInputRef.current) {
+	// 		advancedInputRef.current.focus();
+	// 	}
+	// }, [showAdvanced]);
 
 	const onChange = (event: ChangeEvent<HTMLInputElement>) => {
 		setValue(event.target.value);
@@ -57,8 +60,7 @@ export function Playground() {
 			return;
 		}
 
-		// const checkResult = checkWord(value);
-		const checkResult = '';
+		const checkResult = checkItem(value);
 
 		if (!checkResult) {
 			return;
@@ -67,15 +69,16 @@ export function Playground() {
 		const { isCorrectAnswer, isPartiallyCorrect, isSynonym } = checkResult;
 
 		if (isCorrectAnswer) {
-			setError('');
-
-			// if (mode === GameMode.Advanced && !showAdvanced) {
-			// 	setShowAdvanced(true);
-			// 	return;
-			// }
-
 			onReset();
-			// dispatch(setAsSucceed({ rusKey, engKey: value }));
+			const requestBody: UpdateWordRequestBody = {
+				translationName: value,
+				isAnswered: true,
+				isFavorite: false,
+			}
+			fetch('/api/playground', {
+				method: 'PUT',
+				body: JSON.stringify(requestBody)
+			})
 			return;
 		}
 
@@ -108,16 +111,16 @@ export function Playground() {
 	}
 
 	const onNext = () => {
-		// onReset();
-		// updateWord();
+		onReset();
+		updateItem();
 	};
 
 	const onReset = () => {
-		// setValue('');
-		// setError('');
+		setValue('');
+		setError('');
 		// setSynonymsSelected([]);
 		// setShowAdvanced(false);
-		// setShowHelp(false);
+		setShowHelp(false);
 	};
 
 	const onHelp = () => setShowHelp(true);
@@ -129,22 +132,14 @@ export function Playground() {
 			alignItems="center"
 			height="100%"
 			mt="50px"
-			// className={styles.wrapper}
 		>
-			<h1
-				// className={styles.title}
-			>
+			<h1>
 				<Tooltip
 					placement="top"
-					// className={styles.tooltip}
-					title={
-						<span
-							// className={styles.exampleText}
-						>{rusContext}</span>
-					}
+					title={<span>{currentItem.exampleFrom}</span>}
 				>
 					<span>
-						Test{/* {rusKey[0].toUpperCase() + rusKey.slice(1)} */}
+						{currentItem.wordFrom}
 					</span>
 				</Tooltip>
 				{/* <FavoriteIcon
@@ -161,7 +156,6 @@ export function Playground() {
 				flexDirection="column"
 				gap="10px"
 				width="400px"
-				// className={styles.form}
 				onSubmit={handleCheck}
 			>
 				<TextField
@@ -172,31 +166,34 @@ export function Playground() {
 					variant="outlined"
 					helperText={error}
 					autoFocus={true}
-					// className={styles.verticalOffset}
 					onChange={onChange}
 					value={value}
 					error={Boolean(error)}
-					disabled={showHelp || showAdvanced}
+					disabled={showHelp
+						// || showAdvanced
+					}
 				/>
 				<Button
-					// className={styles.verticalOffset}
 					variant="contained"
 					fullWidth
 					type="submit"
-					disabled={showHelp || showAdvanced}
+					disabled={showHelp
+						// || showAdvanced
+					}
 				>
 					Answer
 				</Button>
 				<Box
 					display="flex"
 					gap="10px"
-					// className={styles.helpButtons}
 				>
 					<Button
 						variant="outlined"
 						fullWidth
 						onClick={onHelp}
-						disabled={showHelp || showAdvanced}
+						disabled={showHelp
+							// || showAdvanced
+						}
 					>
 						Help
 					</Button>
@@ -204,17 +201,17 @@ export function Playground() {
 						variant="outlined"
 						fullWidth
 						onClick={onNext}
-						disabled={isLast || showAdvanced}
+						// disabled={isLast
+						// 	//  || showAdvanced
+						// }
 					>
 						{showHelp ? 'Next' : 'Skip'}
 					</Button>
 				</Box>
 			</Box>
 
-			{synonymsSelected.length > 0 && (
-				<List
-					// className={clsx(styles.synonyms, styles.verticalOffset)}
-				>
+			{/* {synonymsSelected.length > 0 && (
+				<List>
 					{synonymsSelected.map((synonym) => (
 						<React.Fragment key={synonym}>
 							<ListItem>{synonym}</ListItem>
@@ -222,20 +219,13 @@ export function Playground() {
 						</React.Fragment>
 					))}
 				</List>
-			)}
+			)} */}
 
 			{showHelp && (
 				<Tooltip
-					// className={styles.tooltip}
-					title={
-						<span
-							// className={styles.exampleText}
-						>{engContext}</span>
-					}
+					title={<span>{currentItem.exampleTo}</span>}
 				>
-					<span
-						// className={styles.help}
-					>{engKey}</span>
+					<Box mt="10px">{currentItem.wordTo}</Box>
 				</Tooltip>
 			)}
 
