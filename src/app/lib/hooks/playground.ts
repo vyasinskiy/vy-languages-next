@@ -1,48 +1,59 @@
-import { translations } from "@prisma/client";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { PlaygroundItem } from "../types/playground";
 
-export const useWords = (items: PlaygroundItem[], langFrom: string, langTo: string) => {
+export const useWords = (items: PlaygroundItem[], getMore: (ignoreIds: number[]) => Promise<PlaygroundItem[]>) => {
 
 	const [todo, setTodo] = useState(items);
 	const { currentIndex, updateIndex } = useUpdateIndex();
-
-	const updateItem = () => updateIndex(todo.length);
+	const currentItem = todo[currentIndex];
+	const getNewItem = () => updateIndex(todo.length);
 
 	useEffect(() => {
-		if (todo.length === items.length) {
+		if (todo.length > 5) {
 			return;
 		}
 
-		setTodo((todo) => ([
-			...todo,
-			...items,
-		]))
-	}, [items]);
-
-	const checkItem = (value: string) => {
-		const correctWord = todo[currentIndex].linkedWords.find((word) => word.lang === langTo);
-
-		if (!correctWord) {
-			return {
-				isCorrectAnswer: false,
-				isPartiallyCorrect: false,
-				isSynonym: false,
-			}
+		const getMoreItems = async () => {
+			const newItems = await getMore(todo.map(t => t.translationId));
+			if (!newItems.length) return;
+			setTodo((todo) => ([...todo,...newItems]))
 		}
 
-		setTodo((todo) => todo.filter((word) => word.name !== value));
-		const isCompletelyCorrect = value === correctWord.name;
-		const isPartiallyCorrect = correctWord.name.includes(value);
+		getMoreItems();
+	}, [todo, getMore]);
 
-		return {
-			isCorrectAnswer: isCompletelyCorrect,
-			isPartiallyCorrect: !isCompletelyCorrect && isPartiallyCorrect,
-			// isSynonym: currentWord.linkedWords.some((word) => word.name === value),
-		};
+	const checkItem = (value: string) => {
+		const isCompletelyCorrect = value === currentItem.wordTo;
+		const isPartiallyCorrect = currentItem.wordTo.includes(value) && !isCompletelyCorrect;
+
+		return { isPartiallyCorrect, isCompletelyCorrect };
 	};
 
-	return { currentItem: todo[currentIndex], updateItem, checkItem };
+	const setAsAnswered = (translationId: number) => {
+		setTodo((todo) => todo.filter((item) => item.translationId !== translationId));
+		updateIndex(todo.length - 1);
+	};
+
+	const toggleAsFavorite = (translationId: number, isFavorite: boolean) => {
+		setTodo((todo) => todo.map((item) => {
+			if (item.translationId === translationId) {
+				return {
+					...item,
+					isFavorite,
+				}
+			}
+
+			return item;
+		}));
+	};
+
+	const removeFromTodo = (translationId: number) => {
+		const filtredTodo = todo.filter((item) => item.translationId !== translationId);
+		setTodo(filtredTodo);
+		updateIndex(filtredTodo.length - 1);
+	}
+
+	return { currentItem, getNewItem, checkItem, setAsAnswered, toggleAsFavorite, removeFromTodo };
 }
 
 function useUpdateIndex() {

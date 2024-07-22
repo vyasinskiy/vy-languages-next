@@ -1,21 +1,24 @@
 import prisma from '@lib/prisma';
 
-export const getTranslationsDbItem = async (skipIds: number[]) => {
-    return await prisma.translations.findMany({
-        take: 5,
-        relationLoadStrategy: 'join',
+export const getTranslationsDbItems = async (ignoreIds: number[]) => {
+    const translations = await prisma.translations.findMany({
+        take: 10,
         include: {
-          words_translations_word_id_fromTowords: true,
-          words_translations_word_id_toTowords: true,
+            progress: true,
+            words_translations_word_id_fromTowords: true,
+            words_translations_word_id_toTowords: true,
         },
-        ...(skipIds && {
-            where: {  
-                translation_id: {
-                  not: {
-                    in: skipIds,
-                  }
-                }
+        where: {
+            words_translations_word_id_fromTowords: {
+                language_id: 3,
+            },
+            progress: {
+                none: {
+                    is_answered: true,
+                },
             }
-        })
+        },
       })
+
+    return translations;
 }

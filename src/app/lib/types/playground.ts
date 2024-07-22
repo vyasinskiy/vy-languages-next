@@ -1,4 +1,4 @@
-import { getTranslationsDbItem } from "../queries/playground";
+import { getTranslationsDbItems } from "../queries/playground";
 import { ArrayElement } from "../types";
 
 export enum GameMode {
@@ -8,10 +8,14 @@ export enum GameMode {
 }
 
 export interface PlaygroundItem {
+    wordIdFrom: number;
     wordFrom: string;
-    exampleFrom: string;
+    exampleFrom: string | null;
+    wordIdTo: number;
     wordTo: string;
-    exampleTo: string;
+    exampleTo: string | null;
+    translationId: number;
+    isFavorite: boolean;
 }
 
-export type TranslationDbItem = ArrayElement<Awaited<ReturnType<typeof getTranslationsDbItem>>>;
+export type TranslationDbItem = ArrayElement<Awaited<ReturnType<typeof getTranslationsDbItems>>>;

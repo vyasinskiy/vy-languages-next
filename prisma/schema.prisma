@@ -23,6 +23,8 @@ model progress {
   is_favorite    Boolean      @default(false)
   translations   translations @relation(fields: [translation_id], references: [translation_id], onDelete: NoAction, onUpdate: NoAction)
   users          users        @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([user_id, translation_id], map: "unique_progress")
 }
 
 model translations {
@@ -48,7 +50,7 @@ model words {
   word_id                                       Int            @id @default(autoincrement())
   word                                          String         @db.VarChar(50)
   language_id                                   Int
-  word_example                                  String?        @db.VarChar(100)
+  word_example                                  String?        @db.VarChar(1000)
   translations_translations_word_id_fromTowords translations[] @relation("translations_word_id_fromTowords")
   translations_translations_word_id_toTowords   translations[] @relation("translations_word_id_toTowords")
   languages                                     languages      @relation(fields: [language_id], references: [language_id], onDelete: NoAction, onUpdate: NoAction)

@@ -3,23 +3,21 @@ import React, { SyntheticEvent, useEffect, useMemo, useRef } from 'react';
 import { useState, ChangeEvent } from 'react';
 import {
 	Button,
-	Divider,
-	List,
-	ListItem,
 	TextField,
-	Tooltip,
 } from '@mui/material';
 import Box from '@mui/material/Box';
-
-// import { useWord } from '../../hooks/useWord';
-
-//import { ReactComponent as FavoriteIcon } from '../../assets/icons/favorite.svg';
+import IconButton from '@mui/material/IconButton';
 import { SnackBar } from '../SnackBar';
-// import { AdvancedGame } from '../AdvancedGame';
 import { ComponentProps } from '@lib/types';
-import { UpdateWordRequestBody } from '@/app/api/playground/route';
+import StarIcon from '@mui/icons-material/Star';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
+import EditIcon from '@mui/icons-material/Edit';
 import { PlaygroundItem } from '@/app/lib/types/playground';
 import { useWords } from '@/app/lib/hooks/playground';
+import { ProgressUiRequestBody } from '@/app/api/playground/progress/route';
+import { Tooltip } from '../Tooltip';
+import { EditWordModal } from '../Modals/EditWordModal';
+import { capitalizeFirst } from '@/app/lib/tools/playground';
 
 interface PlaygroundProps extends ComponentProps {
 	items: PlaygroundItem[];
@@ -28,32 +26,35 @@ interface PlaygroundProps extends ComponentProps {
 }
 
 export function Playground(props: PlaygroundProps) {
-	// const [translations, setTranslations] = useState(props.translations ?? []);
-	// const dispatch = useAppDispatch();
-
-	// const mode = useSelector((state: RootState) => state.mode);
-
 	const [value, setValue] = useState<string>('');
 	const [error, setError] = useState<string>('');
 	const [showHelp, setShowHelp] = useState<boolean>(false);
-	// const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
-	const [synonymsSelected, setSynonymsSelected] = useState<string[]>([]);
+	const [open, setOpen] = useState<boolean>(false);
 
-	const { currentItem, updateItem, checkItem } = useWords(props.items, props.langFrom, props.langTo);
+	const getMore = async (ignoreIds: number[]) => {
+		const searchParams = new URLSearchParams({ ignoreIds: ignoreIds.toString() });
+		const response = await fetch('/api/playground/progress?' + searchParams.toString(), {
+			method: 'GET',
+		});
+		const responseBody = await response.json();
 
-	const advancedInputRef = useRef<HTMLInputElement>();
+		return responseBody.data as PlaygroundItem[];
+	}
 
-	// useEffect(() => {
-	// 	if (advancedInputRef.current) {
-	// 		advancedInputRef.current.focus();
-	// 	}
-	// }, [showAdvanced]);
+	const {
+		currentItem,
+		getNewItem,
+		checkItem,
+		setAsAnswered,
+		toggleAsFavorite,
+		removeFromTodo,
+	} = useWords(props.items, getMore);
 
 	const onChange = (event: ChangeEvent<HTMLInputElement>) => {
 		setValue(event.target.value);
 	};
 
-	const handleCheck = (event: SyntheticEvent) => {
+	const handleCheck = async (event: SyntheticEvent) => {
 		event.preventDefault();
 
 		if (value === '') {
@@ -66,19 +67,10 @@ export function Playground(props: PlaygroundProps) {
 			return;
 		}
 
-		const { isCorrectAnswer, isPartiallyCorrect, isSynonym } = checkResult;
+		const { isCompletelyCorrect, isPartiallyCorrect } = checkResult;
 
-		if (isCorrectAnswer) {
-			onReset();
-			const requestBody: UpdateWordRequestBody = {
-				translationName: value,
-				isAnswered: true,
-				isFavorite: false,
-			}
-			fetch('/api/playground', {
-				method: 'PUT',
-				body: JSON.stringify(requestBody)
-			})
+		if (isCompletelyCorrect) {
+			await handleSetAsAnswered();
 			return;
 		}
 
@@ -87,41 +79,59 @@ export function Playground(props: PlaygroundProps) {
 			return;
 		}
 
-		if (isSynonym) {
-			setValue('');
-			setError('Synonym! Try another one!');
-
-			const isSynonymAlreadySelected = synonymsSelected.includes(value);
-
-			if (isSynonymAlreadySelected) {
-				return;
-			}
-
-			setSynonymsSelected((synonyms) => [...synonyms, value]);
-			// dispatch(setAsSucceed({ rusKey, engKey: value }));
-
-			return;
-		}
-
 		setError('Wrong translation!');
 	};
 
-	const handleAddToFavorite = () => {
-		// dispatch(setAsFavorite({ rusKey, engKey }));
+	const handleSetAsAnswered = async () => {
+		onReset();
+		setAsAnswered(currentItem.translationId);
+		const requestBody: ProgressUiRequestBody = {
+			translationId: currentItem.translationId,
+			isAnswered: true,
+			isFavorite: currentItem.isFavorite,
+		}
+		await fetch('/api/playground/progress', {
+			method: 'POST',
+			body: JSON.stringify(requestBody)
+		});
+	} 
+
+	const handleToggleFavorite = async () => {
+		toggleAsFavorite(currentItem.translationId, !currentItem.isFavorite);
+		const requestBody: ProgressUiRequestBody = {
+			translationId: currentItem.translationId,
+			isFavorite: !currentItem.isFavorite,
+			isAnswered: false,
+		}
+		const result = await fetch('/api/playgroung/progress', {
+			method: 'PUT',
+			body: JSON.stringify(requestBody)
+		});
+		if (!result.ok) {
+			toggleAsFavorite(currentItem.translationId, currentItem.isFavorite);
+		}
 	}
 
 	const onNext = () => {
 		onReset();
-		updateItem();
+		getNewItem();
 	};
 
 	const onReset = () => {
 		setValue('');
 		setError('');
-		// setSynonymsSelected([]);
-		// setShowAdvanced(false);
 		setShowHelp(false);
 	};
+
+	const onSuccess = () => {
+		removeFromTodo(currentItem.translationId);
+		onReset();
+	}
+
+	const onDelete = async () => {
+		removeFromTodo(currentItem.translationId);
+		onReset();
+	}
 
 	const onHelp = () => setShowHelp(true);
 
@@ -133,29 +143,36 @@ export function Playground(props: PlaygroundProps) {
 			height="100%"
 			mt="50px"
 		>
-			<h1>
+			<Box display="flex" alignItems="center">
 				<Tooltip
 					placement="top"
-					title={<span>{currentItem.exampleFrom}</span>}
-				>
-					<span>
-						{currentItem.wordFrom}
-					</span>
-				</Tooltip>
-				{/* <FavoriteIcon
-					className={cn(styles.favoriteIcon, {
-						[styles.active]: isFavorite,
-					})}
-					onClick={handleAddToFavorite}
-				/> */}
-			</h1>
-
+					title={currentItem.exampleFrom}
+					text={
+						<Box component="h2" display="inline">{capitalizeFirst(currentItem.wordFrom)}</Box>
+					}
+				/>
+				<IconButton size='small' onClick={handleToggleFavorite}>
+					{currentItem.isFavorite ? <StarIcon color='primary'/> : <StarBorderIcon color='primary' />}
+				</IconButton>
+				<IconButton onClick={() => setOpen(true)} size='small'>
+					<EditIcon color="primary"/>
+				</IconButton>
+				<EditWordModal
+					onClose={() => setOpen(false)}
+					isOpen={open}
+					playgroundItem={currentItem}
+					onSuccess={onSuccess}
+					onDelete={onDelete}
+				/>
+			</Box>
 			<Box
 				component="form"
 				display="flex"
 				flexDirection="column"
 				gap="10px"
 				width="400px"
+				mb="25px"
+				mt='20px'
 				onSubmit={handleCheck}
 			>
 				<TextField
@@ -169,17 +186,13 @@ export function Playground(props: PlaygroundProps) {
 					onChange={onChange}
 					value={value}
 					error={Boolean(error)}
-					disabled={showHelp
-						// || showAdvanced
-					}
+					disabled={showHelp}
 				/>
 				<Button
 					variant="contained"
 					fullWidth
 					type="submit"
-					disabled={showHelp
-						// || showAdvanced
-					}
+					disabled={showHelp}
 				>
 					Answer
 				</Button>
@@ -191,9 +204,7 @@ export function Playground(props: PlaygroundProps) {
 						variant="outlined"
 						fullWidth
 						onClick={onHelp}
-						disabled={showHelp
-							// || showAdvanced
-						}
+						disabled={showHelp}
 					>
 						Help
 					</Button>
@@ -201,42 +212,18 @@ export function Playground(props: PlaygroundProps) {
 						variant="outlined"
 						fullWidth
 						onClick={onNext}
-						// disabled={isLast
-						// 	//  || showAdvanced
-						// }
 					>
 						{showHelp ? 'Next' : 'Skip'}
 					</Button>
 				</Box>
 			</Box>
 
-			{/* {synonymsSelected.length > 0 && (
-				<List>
-					{synonymsSelected.map((synonym) => (
-						<React.Fragment key={synonym}>
-							<ListItem>{synonym}</ListItem>
-							<Divider />
-						</React.Fragment>
-					))}
-				</List>
-			)} */}
-
 			{showHelp && (
 				<Tooltip
-					title={<span>{currentItem.exampleTo}</span>}
-				>
-					<Box mt="10px">{currentItem.wordTo}</Box>
-				</Tooltip>
-			)}
-
-			{/* {mode === GameMode.Advanced && showAdvanced && (
-				<AdvancedGame
-					inputRef={advancedInputRef}
-					rusContext={rusContext}
-					engContext={engContext}
-					onCheck={handleCheck}
+					title={currentItem.exampleTo}
+					text={currentItem.wordTo}
 				/>
-			)} */}
+			)}
 			<SnackBar />
 		</Box>
 	);
